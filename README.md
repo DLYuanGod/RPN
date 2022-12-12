@@ -34,7 +34,7 @@ optional arguments:
   -md MODE, --mode MODE
                         which mode use test or val
   -ns NOISE, --noise NOISE
-                        which noise use None ,Gaussian(G) ,SAP ,RPN or whole
+                        which noise use else,None(FreeLB),SAP ,RPN or whole
   -sc SCALE, --scale SCALE
                         Variance of Gaussian distribution
   -pr PROB, --prob PROB

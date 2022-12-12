@@ -49,7 +49,7 @@ def main():
     parser.add_argument('-md','--mode',default='test', type=str,
                         help="which mode use test or val")
     parser.add_argument('-ns','--noise',default='None', type=str,
-                        help="which noise use None ,Gaussian(G) ,SAP ,RPN or whole")
+                        help="which noise use else ,None(FreeLB),SAP ,RPN or whole")
     parser.add_argument('-sc','--scale',default='0.01', type=float,
                         help="Variance of Gaussian distribution")
     parser.add_argument('-pr','--prob',default='0.0', type=float,
