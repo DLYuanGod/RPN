@@ -4,10 +4,10 @@ from transformers import BertTokenizer, BertModel
 import torch
 
 class RobertaClassifier(nn.Module):
-    def __init__(self, num_labels):
+    def __init__(self, ):
         super(RobertaClassifier, self).__init__()
-        D_in,D_out = 768,num_labels
-        self.Roberta = RobertaModel.from_pretrained('roberta-base', cache_dir='./working_dir')
+        D_in,D_out = 768,20
+        self.Roberta = BertModel.from_pretrained('bert-base-uncased')
         self.word_embeddings = self.Roberta.embeddings.word_embeddings
         self.classifier = nn.Sequential(
             nn.Linear(D_in, D_out), 
@@ -30,7 +30,7 @@ class RobertaClassifier(nn.Module):
 class MultipleChoice(nn.Module):
     def __init__(self, ):
         super(MultipleChoice, self).__init__()
-        self.Roberta = RobertaForMultipleChoice.from_pretrained('roberta-base', cache_dir='./working_dir')
+        self.Roberta = RobertaForMultipleChoice.from_pretrained('roberta-base')
         self.word_embeddings = self.Roberta.roberta.embeddings.word_embeddings
 
     def forward(self, input_ids, attention_mask=None, inputs_embeds=None):
@@ -48,7 +48,7 @@ class Classification(nn.Module):
     def __init__(self, numbout):
         super(Classification, self).__init__()
         self.numbout = numbout
-        self.Roberta = RobertaForSequenceClassification.from_pretrained('roberta-base',num_labels = self.numbout, cache_dir='./working_dir')
+        self.Roberta = RobertaForSequenceClassification.from_pretrained('roberta-base',num_labels = self.numbout)
         self.word_embeddings = self.Roberta.roberta.embeddings.word_embeddings
 
     def forward(self, input_ids, attention_mask=None, inputs_embeds=None):
@@ -67,7 +67,7 @@ class TextCNN(nn.Module):
     # output_size为输出类别（2个类别，0和1）,三种kernel，size分别是3,4，5，每种kernel有100个
     def __init__(self , output_size, embedding_dim=768, filter_num=100, kernel_list=(10, 20, 30), dropout=0.3):
         super(TextCNN, self).__init__()
-        self.Roberta = RobertaModel.from_pretrained('roberta-base', cache_dir='./working_dir')
+        self.Roberta = RobertaModel.from_pretrained('roberta-base')
         self.word_embeddings = self.Roberta.embeddings.word_embeddings
         self.convs = nn.ModuleList([
             nn.Sequential(nn.Conv2d(1, filter_num, (kernel, embedding_dim)),

@@ -7,25 +7,17 @@ from transformers import BertTokenizer, BertModel
 from torch.utils.data import TensorDataset
 from torch.nn.parallel import DistributedDataParallel as DDP
 import os
-from pandas import Series
+
 import building_the_dataset as bd
 import encoded_data as encoded
 import trainer
 import add_noise as an
-from EDA import get_eda_df
-from AEDA import get_aeda_df
-from back_translate import get_back_translate_df
-import time
-
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1' 
-os.environ["CUDA_VISIBLE_DEVICES"] = '0,2'
-os.environ['TRANSFORMERS_CACHE'] = '/home/ahpu/zhengqingyuan/demo1/working_dir'
-
 def tokenizer_select(model):
     if model == 'XLNet':
         tokenizer = XLNetTokenizer.from_pretrained('xlnet-base-cased')
     elif model == 'Roberta':
-        tokenizer = RobertaTokenizer.from_pretrained('roberta-base', cache_dir='./working_dir')
+        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     return tokenizer
 
 
@@ -71,51 +63,23 @@ def main():
                         help="which tasks_kinds use Classification or MultipleChoice")
     parser.add_argument('-nl','--num_labels',default=1, type=int,
                         help="If you use Classification.Please input num_labels")
-    parser.add_argument("--local-rank", type=int)
+    parser.add_argument("--local_rank", type=int)
     args = parser.parse_args()
+
 
     print("Data cleaning in progress!\n")
     train_data_text,train_data_label = bd.building_dataset(args.train_data_path)
     val_data_text,val_data_label     = bd.building_dataset(args.val_data_path)
     test_data_text,test_data_label   = bd.building_dataset(args.test_data_path)
 
-    if(args.noise=="EDA"):
-        train_data_text_frist = Series(get_eda_df(train_data_text))
-        train_data_text_second = Series(get_eda_df(train_data_text))
-    if(args.noise=="AEDA"):
-        train_data_text_frist = Series(get_aeda_df(train_data_text))
-    if(args.noise=="BT"):
-        train_data_text_frist = Series(get_back_translate_df(train_data_text))
-    
     print('Sample word segmentation and coding in progress!\n')
     tokenizer = tokenizer_select(args.model)
     encoded_data_train =  encoded.encoded_data(tokenizer,train_data_text)
-    if(args.noise=="EDA"):
-        encoded_data_train_frist =  encoded.encoded_data(tokenizer,train_data_text_frist)
-        encoded_data_train['input_ids'] = torch.cat( (encoded_data_train['input_ids'],encoded_data_train_frist['input_ids']), 0 )
-        encoded_data_train_second =  encoded.encoded_data(tokenizer,train_data_text_second)
-        encoded_data_train['input_ids'] = torch.cat( (encoded_data_train['input_ids'],encoded_data_train_second['input_ids']), 0 )
-    if(args.noise=="AEDA"):
-        encoded_data_train_frist =  encoded.encoded_data(tokenizer,train_data_text_frist)
-        encoded_data_train['input_ids'] = torch.cat( (encoded_data_train['input_ids'],encoded_data_train_frist['input_ids']), 0 )
-    if(args.noise=="BT"):
-        encoded_data_train_frist =  encoded.encoded_data(tokenizer,train_data_text_frist)
-        encoded_data_train['input_ids'] = torch.cat( (encoded_data_train['input_ids'],encoded_data_train_frist['input_ids']), 0 )
-    
-    encoded_data_val   =  encoded.encoded_data(tokenizer,val_data_text)
-    encoded_data_test  =  encoded.encoded_data(tokenizer,test_data_text)
-    
     encoded_data_val   =  encoded.encoded_data(tokenizer,val_data_text)
     encoded_data_test  =  encoded.encoded_data(tokenizer,test_data_text)
 
     print('Dataset construction in progress!\n')
-    if(args.noise=="EDA"):
-        dataset_train = building_tensordataset(encoded_data_train['input_ids'], encoded_data_train['attention_mask'].repeat(3,1), torch.Tensor(train_data_label).long().repeat(3))
-    elif(args.noise=="AEDA" or args.noise=="BT"):
-        dataset_train = building_tensordataset(encoded_data_train['input_ids'], encoded_data_train['attention_mask'].repeat(2,1), torch.Tensor(train_data_label).long().repeat(2))
-    else:
-        dataset_train = building_tensordataset(encoded_data_train['input_ids'], encoded_data_train['attention_mask'], torch.Tensor(train_data_label).long())
-    
+    dataset_train = building_tensordataset(encoded_data_train['input_ids'], encoded_data_train['attention_mask'], torch.Tensor(train_data_label).long())
     dataset_val = building_tensordataset(encoded_data_val['input_ids'], encoded_data_val['attention_mask'], torch.Tensor(val_data_label).long())
     dataset_test = building_tensordataset(encoded_data_test['input_ids'], encoded_data_test['attention_mask'], torch.Tensor(test_data_label).long())
 
@@ -129,8 +93,9 @@ def main():
         if args.noise == 'RPN':
             an.selection_mat(args.batch_size,args.gpus,args.prob)
         print(f"{'Epoch':^7} | {'Every 40 Batchs':^9} | {'Train dataset Loss':^12} | {'test/val dataset Loss':^10} | {'test/val acc':^9} | {'time':^9}")
-        model, optimizer = trainer.train(model=model,train_dataloader=dataloader_train,optimizer=optimizer,dataloader_validation=dataloader_test,scheduler=scheduler,epochs=args.epochs
-            ,noise=args.noise,scale=args.scale,prob=args.prob, evaluation=True,gpus=args.gpus,adv_step=args.adv_step)
+        trainer.train(model=model,train_dataloader=dataloader_train,optimizer=optimizer,scheduler=scheduler,epochs=args.epochs
+            ,noise=args.noise,scale=args.scale,prob=args.prob, evaluation=False,gpus=args.gpus,adv_step=args.adv_step)
+        trainer.evaluate(model,dataloader_test)
 
 
     elif args.mode == 'val':
@@ -146,7 +111,4 @@ def main():
 
 
 if __name__ == '__main__':
-    T1 = time.time()
     main()
-    T2 = time.time()
-    print('The programer excute time : %s ms' % ((T2 - T1)*1000))

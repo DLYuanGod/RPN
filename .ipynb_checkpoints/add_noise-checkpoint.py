@@ -6,7 +6,7 @@ global selection_matrix
 def selection_mat(batch_size,gpus,prob):
     batch_size = batch_size // gpus
     global selection_matrix
-    selection_matrix = torch.from_numpy(np.random.choice([1., 0.], size=batch_size*50*768, p=[prob,1-prob]).reshape(batch_size,50,768)).cuda().to(torch.float32)
+    selection_matrix = torch.from_numpy(np.random.choice([1., 0.], size=batch_size*50*768, p=[prob,1-prob]).reshape(batch,50,768)).cuda().to(torch.float32)
 
 def Normal_noise(embeddings,input_mask):
     input_lengths = torch.sum(input_mask, 1)

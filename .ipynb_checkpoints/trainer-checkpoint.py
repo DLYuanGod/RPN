@@ -13,12 +13,11 @@ import add_noise as an
 import pandas as pd
 import building_the_dataset as bd
 
-def building_dataloader(dataset,batch_size,gpus,mode='else',init=True):
+def building_dataloader(dataset,batch_size,gpus,mode='else'):
     if mode == 'train':
         if gpus>1:
             batch_size = batch_size // gpus
-            if init==True:
-                dist.init_process_group(backend="nccl")
+            dist.init_process_group(backend="nccl")
             sampler = DistributedSampler(dataset)
         else:
             sampler=RandomSampler(dataset)
@@ -38,7 +37,7 @@ def initialize_model(models,gpus,local_rank,lr,eps,dataloader_train,epochs,tasks
         model.cuda()
     if  models == 'Roberta':
         if tasks_kinds == 'Classification':
-            model = Roberta_models.RobertaClassifier(num_labels=num_labels)
+            model = Roberta_models.RobertaClassifier()
         elif tasks_kinds == 'MultipleChoice':
             model = Roberta_models.MultipleChoice()
         else:
@@ -141,6 +140,8 @@ def train(model, train_dataloader, optimizer, scheduler, noise, scale, prob, dat
             if noise == 'G' or noise == 'SAP' or noise == 'RPN':
                 for adv_s in range(adv_step):
                     embeddings = model.module.word_embeddings(input_ids_train)
+                    if step == 0:
+                        an.selection_mat(embeddings,prob)
                     #Add Gaussian noise
                     if noise == 'G':
                         embeddings = an.Gaussian_noise(embeddings,attention_masks_train,scale)
@@ -232,5 +233,3 @@ def train(model, train_dataloader, optimizer, scheduler, noise, scale, prob, dat
         #               Evaluation
         if evaluation:
             evaluate(model, dataloader_validation)
-        
-    return model, optimizer

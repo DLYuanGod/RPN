@@ -1,0 +1,2 @@
+def encoded_data(tokenizer,data_text,return_attention_mask=True,padding = True,truncation=True, max_length=50):
+    return (tokenizer.batch_encode_plus(data_text,return_attention_mask=return_attention_mask,padding=padding,max_length=max_length,truncation=truncation,return_tensors='pt'))
